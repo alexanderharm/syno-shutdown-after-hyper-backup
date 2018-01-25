@@ -35,7 +35,7 @@ Enabled: yes
 
 # Schedule
 Run on the following days: Daily
-First run time:            (00:00 or the full hour after the replication jobs start)
+First run time:            (00:00 or the full hour after the backup jobs start)
 Frequency:                 Every 15 minute(s)
 Last run time:				23:45
 
