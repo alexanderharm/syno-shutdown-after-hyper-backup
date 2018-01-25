@@ -23,13 +23,16 @@ if grep -q "^${todayBoot}T\\(\\(0[6-9]\\)\\|\\([1-2][0-9]\\)\\).*\\[synoboot\\].
 	exit 0
 fi
 
+# Check backup jobs
+configuredJobs="$(grep -Eo '^\[target_[0-9]+\]$' /usr/syno/etc/synobackup_server.conf | wc -l)"
+
 # check for arguments
 if [ -z $1 ]; then
-	echo "No number of tasks passed to SynoShutdownAfterHyperBackup!"
+	echo "No number of jobs passed to SynoShutdownAfterHyperBackup!"
 	exit 1
 else
-	echo "This number of tasks was passed: ${1}."
-	nrTasks=$1
+	echo "This number of jobs was passed: ${1}, this number is configured: ${configuredJobs}."
+	nrJobs=$1
 fi
 
 # self update run once daily
@@ -56,23 +59,23 @@ else
 fi
 
 # check logs for success message
-tasksStarted=$(grep -Eo "info\s+"${today}".+backup.+Backup started.$" /var/log/synolog/synobackup_server.log | wc -l)
-tasksFinished=$(grep -Eo "info\s+"${today}".+backup.+Backup complete.$" /var/log/synolog/synobackup_server.log | wc -l)
-if [ $tasksStarted -eq $tasksFinished ]; then
-	if [ $nrTasks -eq $tasksFinished ]; then
+jobsStarted=$(grep -Eo "info\s+"${today}".+backup.+Backup started.$" /var/log/synolog/synobackup_server.log | wc -l)
+jobsFinished=$(grep -Eo "info\s+"${today}".+backup.+Backup complete.$" /var/log/synolog/synobackup_server.log | wc -l)
+if [ $jobsStarted -eq $jobsFinished ]; then
+	if [ $nrJobs -le $jobsFinished ]; then
 		echo "All backups have finished." 
 		shutdown -h +5 "System going down in 5 minutes."
 	else
-		echo "Number of tasks (${nrTasks}) passed does not equal number of backup jobs ${tasksFinished}!"
+		echo "Number of jobs (${nrJobs}) passed does not equal number of backup jobs ${jobsFinished}!"
 		exit 1
 	fi
 else
 	# produce error message if not finished by 23H00
 	if [ $(date +%H) -eq 23 ]; then
-		echo "Only ${tasksFinished} of ${nrTasks} HyperBackup jobs have finished by $(date +%H:%M)."
+		echo "Only ${jobsFinished} of ${nrJobs} HyperBackup jobs have finished by $(date +%H:%M)."
 		exit 2
 	else
-		echo "${tasksFinished} of ${nrTasks} HyperBackup jobs have finished."
+		echo "${jobsFinished} of ${nrJobs} HyperBackup jobs have finished."
 		exit 0
 	fi
 fi
