@@ -23,16 +23,14 @@ if grep -q "^${todayBoot}T\\(\\(0[6-9]\\)\\|\\([1-2][0-9]\\)\\).*\\[synoboot\\].
 	exit 0
 fi
 
-# Check backup jobs
-configuredJobs="$(grep -Eo '^\[target_[0-9]+\]$' /usr/syno/etc/synobackup_server.conf | wc -l)"
-
 # check for arguments
 if [ -z $1 ]; then
-	echo "No number of jobs passed to SynoShutdownAfterHyperBackup!"
+	echo "No user and jobs passed to SynoShutdownAfterHyperBackup!"
 	exit 1
 else
-	echo "This number of jobs was passed: ${1}, this number is configured: ${configuredJobs}."
-	configuredJobs=$1
+
+	echo "This was passed: $*."
+	backupJobs=( "$@" )
 fi
 
 # self update run once daily
@@ -58,25 +56,32 @@ else
 	echo "Already checked for updates today."
 fi
 
-# check logs for success message
-jobsStarted=$(grep -Eo "info\s+"${today}".+backup.+Backup started.$" /var/log/synolog/synobackup_server.log | wc -l)
-jobsFinished=$(grep -Eo "info\s+"${today}".+backup.+Backup complete.$" /var/log/synolog/synobackup_server.log | wc -l)
-if [ $jobsStarted -eq $jobsFinished ]; then
-	if [ $configuredJobs -le $jobsFinished ]; then
-		echo "All backups have finished." 
-		shutdown -h +5 "System going down in 5 minutes."
-		exit 0
-	else
-		echo "${jobsFinished} of ${jobsStarted} HyperBackup jobs have finished."
-		exit 0
+# define some vars
+finishedJobs=0
+numberOfJobs=${#backupJobs[@]}
+
+# check logs for success message (apparently twice)
+for (( i=0; i<numberOfJobs; i++ )); do
+	username="$(echo ${backupJobs[$i]} | cut -d ':' -f 1)"
+	jobNumber="$(echo ${backupJobs[$i]} | cut -d ':' -f 2)"
+	matches=$(grep -Eo "info\s${today}\s[0-9:]{8}\s${username}:.+Backup complete.$" /var/log/synolog/synobackup_server.log | wc -l)
+	if [ $matches -eq $jobNumber ]; then
+		((finishedJobs++))
 	fi
+done
+
+# check logs for success message
+if [ $numberOfJobs -eq $finishedJobs ]; then
+	echo "All backups have finished." 
+	shutdown -h +5 "System going down in 5 minutes."
+	exit 0
 else
 	# produce error message if not finished by 23H00
 	if [ $(date +%H) -eq 23 ]; then
-		echo "Only ${jobsFinished} of ${jobsStarted} HyperBackup jobs have finished by $(date +%H:%M)."
+		echo "Only ${finishedJobs} of ${numberOfJobs} HyperBackup jobs have finished by $(date +%H:%M)."
 		exit 2
 	else
-		echo "${jobsFinished} of ${jobsStarted} HyperBackup jobs have finished."
+		echo "${finishedJobs} of ${numberOfJobs} HyperBackup jobs have finished."
 		exit 0
 	fi
 fi

@@ -7,7 +7,8 @@ This scripts automatically shuts down a Synology NAS after a list of HyperBackup
 - All HyperBackup jobs need to start after midnight on the same day.
 - It only works with jobs that run daily.
 - There is no easy way on the backup NAS to determine the frequency of backups jobs nor their exact configuration (some details in `/usr/syno/etc/synobackup_server.conf`)
-- Script simply checks if all started jobs finished on the same day, you only pass a minimum number of jobs.
+- Script simply checks if all started jobs per user finished on the same day, so you need to pass the username HyperBackup uses plus the number of jobs configured (e. g. "myserver:1").
+- So it makes kind of sense to configure a separate user for each job.
 - The script will send warning messages if the jobs are not completed by 23:00.
 - If the NAS is booted manually after 06:00 the script will ***not*** shut it down to allow for maintenance/administration/other tasks.
 - The script will automatically update itself using `git`.
@@ -51,5 +52,5 @@ Email:                          (enter the appropriate address)
 Send run details only when
   script terminates abnormally: yes
   
-User-defined script: /volume1/sysadmin/syno-shutdown-after-hyper-backup/synoShutdownAfterHyperBackup.sh "<minNumberOfJobs>"
+User-defined script: /volume1/sysadmin/syno-shutdown-after-hyper-backup/synoShutdownAfterHyperBackup.sh "<username1>:<numberOfJobs1>" "<username2>:<numberOfJobs2>"
 ```
